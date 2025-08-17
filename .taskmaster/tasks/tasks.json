@@ -1,0 +1,150 @@
+{
+  "master": {
+    "tasks": [
+      {
+        "id": 1,
+        "title": "Project Setup and Configuration",
+        "description": "Initialize Express.js with TypeScript project, configure environment variables, and set up the folder structure",
+        "details": "1. Create a new Node.js project with `npm init`\n2. Install core dependencies:\n   - Express.js: `npm install express @types/express`\n   - TypeScript: `npm install typescript ts-node @types/node --save-dev`\n   - Environment variables: `npm install dotenv`\n   - Logging: `npm install winston`\n   - JWT: `npm install jsonwebtoken @types/jsonwebtoken`\n3. Initialize TypeScript with `npx tsc --init` and configure `tsconfig.json` with strict type checking\n4. Set up the folder structure as specified in the PRD (Section 5)\n5. Create `.env` file for storing sensitive information (PostgreSQL credentials, Google Calendar API keys)\n6. Configure basic Express.js server in `server.ts`\n7. Set up logging middleware with Winston\n8. Create configuration file in `src/config/config.ts` to load environment variables",
+        "testStrategy": "1. Verify the project structure matches the PRD requirements\n2. Ensure TypeScript compilation works without errors\n3. Confirm environment variables are properly loaded\n4. Test basic Express.js server starts and responds to requests\n5. Validate logging functionality works as expected",
+        "priority": "high",
+        "dependencies": [],
+        "status": "done",
+        "subtasks": []
+      },
+      {
+        "id": 2,
+        "title": "Database Schema Implementation",
+        "description": "Set up PostgreSQL database with the required tables, constraints, and indexes as specified in the PRD",
+        "details": "1. Install PostgreSQL dependencies: `npm install pg @types/pg sequelize @types/sequelize`\n2. Create database connection utility in `src/db/index.ts`\n3. Implement the following tables with TypeScript interfaces:\n   - `events`: Store core event data with unique identifiers and region-specific details\n   - `event_translations`: Store localized titles and descriptions\n   - `calendar_mappings`: Store region-specific date mappings\n   - `update_metadata`: Track last update timestamps\n4. Add constraints and indexes as specified in Section 4 of the PRD:\n   - Unique constraints: `(event_id, region, calendar_type)` for events, `(event_id, language)` for translations\n   - Indexes on `event_id`, `region`, `updated_at`, etc.\n5. Create TypeScript models in `src/db/models/` for each table\n6. Implement database migration scripts for schema creation and updates",
+        "testStrategy": "1. Test database connection and configuration\n2. Verify all tables are created with the correct columns, constraints, and indexes\n3. Test CRUD operations on each table to ensure models are correctly implemented\n4. Validate unique constraints prevent duplicate entries\n5. Test performance of indexed queries",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 3,
+        "title": "Repository Layer Implementation",
+        "description": "Create repository classes for database access with TypeScript interfaces for type safety",
+        "details": "1. Create the following repository files in `src/db/repository/`:\n   - `calendarRepository.ts`: For events and calendar data\n   - `translationRepository.ts`: For event translations\n   - `updateRepository.ts`: For update metadata\n2. Implement TypeScript interfaces for each repository method\n3. Create methods for:\n   - Fetching events by ID, region, calendar type\n   - Filtering events by update timestamp\n   - Upserting events and translations\n   - Managing calendar mappings\n   - Tracking update metadata\n4. Implement efficient PostgreSQL queries using prepared statements\n5. Add transaction support for atomic operations\n6. Implement error handling and logging for database operations\n7. Use TypeScript generics for reusable query patterns",
+        "testStrategy": "1. Unit test each repository method with mock data\n2. Test transaction rollback on error\n3. Verify query performance with large datasets\n4. Test edge cases (null values, missing records)\n5. Validate type safety with TypeScript compiler",
+        "priority": "high",
+        "dependencies": [
+          2
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 4,
+        "title": "Google Calendar Integration",
+        "description": "Implement Google Calendar API integration for fetching event data annually",
+        "details": "1. Install Google Calendar API client: `npm install @googleapis/calendar`\n2. Create `src/google/googleCalendar.ts` for API integration\n3. Implement authentication with Google API using service account credentials\n4. Create TypeScript interfaces for Google Calendar responses\n5. Implement methods to fetch events for Gregorian, Hijri, and Indonesian calendars\n6. Add rate limiting and retry logic to handle API quotas\n7. Create batch processing for efficient API usage\n8. Implement error handling and logging for API calls\n9. Create a scheduler using `node-cron` (`npm install node-cron @types/node-cron`) for annual fetches\n10. Store fetched data in the PostgreSQL database using the repository layer",
+        "testStrategy": "1. Mock Google Calendar API responses for testing\n2. Verify authentication works correctly\n3. Test rate limiting and retry logic\n4. Validate event data is correctly parsed and stored\n5. Test scheduler functionality\n6. Verify error handling for API failures",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 5,
+        "title": "Calendar Conversion Service",
+        "description": "Implement calendar conversion logic for Gregorian, Hijri, and Indonesian calendars",
+        "details": "1. Install Hijri conversion library: `npm install hijri-js`\n2. Create `src/services/converter.ts` for calendar conversion logic\n3. Implement TypeScript interfaces for date formats and conversion results\n4. Create methods for:\n   - Converting Gregorian to Hijri dates\n   - Handling Indonesia's rukyat-based Hijri calendar\n   - Applying regional calendar mappings\n5. Implement fallback logic when mappings are unavailable\n6. Add validation for date formats and ranges\n7. Create utility functions for date manipulation\n8. Implement logging for conversion operations and fallbacks\n9. Ensure thread-safety for concurrent conversions",
+        "testStrategy": "1. Unit test conversion accuracy for known date pairs\n2. Test fallback logic when mappings are missing\n3. Verify Indonesia's rukyat-based dates are correctly handled\n4. Test edge cases (leap years, date boundaries)\n5. Validate type safety with TypeScript compiler",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 6,
+        "title": "Authentication and Authorization Middleware",
+        "description": "Implement JWT-based authentication and authorization for admin-only endpoints",
+        "details": "1. Create `src/api/middleware/auth.ts` for JWT validation\n2. Implement TypeScript interfaces for JWT payload and user roles\n3. Create middleware to validate JWT tokens for admin routes\n4. Implement role-based access control (RBAC) for admin vs. general users\n5. Add error handling for invalid or expired tokens\n6. Create utility functions for token generation (for testing)\n7. Implement logging for authentication attempts and failures\n8. Configure WindSURF integration for additional security (if applicable)\n9. Add rate limiting middleware for public endpoints\n10. Implement HTTPS enforcement via Express.js or WindSURF",
+        "testStrategy": "1. Test token validation with valid and invalid JWTs\n2. Verify admin-only routes reject non-admin users\n3. Test rate limiting functionality\n4. Validate error responses for authentication failures\n5. Test integration with WindSURF (if applicable)",
+        "priority": "high",
+        "dependencies": [
+          1
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 7,
+        "title": "API Endpoints Implementation",
+        "description": "Implement the core API endpoints as specified in the PRD",
+        "details": "1. Create route files in `src/api/routes/`\n2. Implement handlers in `src/api/handlers/` for:\n   - `GET /updates/check`: Check last update timestamp\n   - `GET /events` and `GET /events/:event_id`: Fetch events with filtering\n   - `POST /events/sync`: Manual fetch of event data (admin-only)\n   - `POST /calendar/mappings`: Update calendar mappings (admin-only)\n3. Create TypeScript interfaces for request and response payloads\n4. Implement validation middleware in `src/api/middleware/validation.ts`\n5. Add error handling for invalid requests\n6. Implement query parameter parsing and validation\n7. Create response formatting utilities\n8. Add logging for API requests and responses\n9. Implement business rules from Section 7 of the PRD\n10. Integrate with repository layer for data access",
+        "testStrategy": "1. Unit test each endpoint with mock repositories\n2. Test validation logic with valid and invalid requests\n3. Verify response formats match PRD specifications\n4. Test filtering logic (region, language, updated_after)\n5. Validate admin-only endpoints require authentication\n6. Test error handling for edge cases",
+        "priority": "high",
+        "dependencies": [
+          3,
+          5,
+          6
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 8,
+        "title": "Localization and Translation Service",
+        "description": "Implement localization logic for event titles and descriptions in multiple languages",
+        "details": "1. Create `src/services/translation.ts` for localization logic\n2. Implement TypeScript interfaces for translations and language codes\n3. Create methods for:\n   - Fetching translations by event ID and language\n   - Handling fallbacks when translations are unavailable\n   - Managing translation updates\n4. Implement caching for frequently accessed translations\n5. Add validation for language codes (id, en, ar)\n6. Create utility functions for text formatting\n7. Implement logging for translation operations\n8. Ensure thread-safety for concurrent access",
+        "testStrategy": "1. Unit test translation fetching with mock data\n2. Test fallback logic when translations are missing\n3. Verify caching improves performance\n4. Test with various language codes\n5. Validate type safety with TypeScript compiler",
+        "priority": "medium",
+        "dependencies": [
+          3
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 9,
+        "title": "Scheduled Tasks and Scripts",
+        "description": "Implement scripts for annual Google Calendar fetch and calendar mapping updates",
+        "details": "1. Create `scripts/fetchCalendar.ts` for annual Google Calendar fetch\n2. Implement `scripts/updateMappings.ts` for Kementerian Agama mapping updates\n3. Use `node-cron` for scheduling annual fetches\n4. Create TypeScript interfaces for script configurations and results\n5. Implement logging for script execution and results\n6. Add error handling and retry logic\n7. Create database transaction support for atomic updates\n8. Implement notification mechanism for failed jobs\n9. Add command-line arguments for manual execution\n10. Create documentation for script usage",
+        "testStrategy": "1. Test scripts with mock data\n2. Verify scheduling works correctly\n3. Test error handling and retry logic\n4. Validate database updates are atomic\n5. Test manual execution with various arguments",
+        "priority": "medium",
+        "dependencies": [
+          4,
+          5
+        ],
+        "status": "pending",
+        "subtasks": []
+      },
+      {
+        "id": 10,
+        "title": "Testing, Documentation, and Deployment",
+        "description": "Implement comprehensive testing, documentation, and deployment configuration",
+        "details": "1. Set up testing framework: `npm install jest ts-jest @types/jest supertest @types/supertest --save-dev`\n2. Create unit tests for all components\n3. Implement integration tests for API endpoints\n4. Create performance tests for database queries\n5. Add documentation in README.md:\n   - API endpoint specifications\n   - Database schema\n   - TypeScript interfaces\n   - Environment variables\n   - Deployment instructions\n6. Create OpenAPI/Swagger documentation for API endpoints\n7. Implement logging and monitoring configuration\n8. Create deployment scripts and configuration\n9. Set up CI/CD pipeline for automated testing and deployment\n10. Implement database backup and recovery procedures",
+        "testStrategy": "1. Verify all tests pass with good coverage\n2. Test documentation accuracy and completeness\n3. Validate deployment in test environment\n4. Test monitoring and logging functionality\n5. Verify backup and recovery procedures",
+        "priority": "medium",
+        "dependencies": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "status": "pending",
+        "subtasks": []
+      }
+    ],
+    "metadata": {
+      "created": "2025-08-16T07:32:05.636Z",
+      "updated": "2025-08-17T03:04:02.359Z",
+      "description": "Tasks for master context"
+    }
+  }
+}

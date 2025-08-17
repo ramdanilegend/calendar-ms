@@ -1,0 +1,414 @@
+# Product Requirements Document (PRD) - CalendarSync API (Express.js with TypeScript)
+
+## 1. Overview
+
+**Project Name**: CalendarSync API (Express.js with TypeScript)
+
+**Purpose**: To develop a TypeScript-based Express.js RESTful API that fetches event data from the Google Calendar API once annually, stores it in a PostgreSQL database, and serves localized event data based on unique `event_id`s. The API supports Gregorian, Hijri, and Indonesian calendars, handling differences in Indonesia’s rukyat-based Hijri calendar (e.g., 1 Muharram 1447 H may differ by one day from global hisab-based dates). It enables users to fetch only updated data, provides admin-only endpoints for manual data synchronization and calendar mapping updates, and integrates with "Windsurf" (assumed API gateway or firewall) for access control and security. TypeScript ensures type safety and improved maintainability.
+
+**Owner**: xAI
+
+**Version**: 1.0.0
+
+**Date**: August 16, 2025
+
+## 2. Objectives
+
+- **Primary Objective**: Build a scalable, secure Express.js API with TypeScript to:
+  - Fetch Google Calendar data annually and store it in PostgreSQL.
+  - Support querying events by `event_id` with localization for regions (Indonesia, global) and languages (Indonesian, English, Arabic).
+  - Enable efficient data retrieval by filtering updated events using a timestamp (`updated_after`).
+  - Provide admin-only endpoints for manual data fetches and calendar mapping updates.
+  - Handle regional calendar differences, especially Indonesia’s rukyat-based Hijri calendar.
+- **Secondary Objectives**:
+  - Leverage TypeScript for type-safe models, interfaces, and middleware.
+  - Optimize PostgreSQL queries for performance.
+  - Integrate with WindSURF for access control, rate limiting, and secure data transmission.
+  - Ensure maintainable codebase with clear type definitions and documentation.
+
+**Target Users**:
+- **General Users**: Query event data with region and language preferences.
+- **Admins**: Perform manual data fetches and update calendar mappings (e.g., Kementerian Agama data for Indonesia).
+
+**Constraints**:
+- Use Express.js with TypeScript (Node.js) for the API backend and PostgreSQL for data storage.
+- Support annual fetch from Google Calendar API with minimal quota usage.
+- Handle localization and regional date differences without duplicating events unnecessarily.
+- Ensure admin-only endpoints are secure and restricted.
+
+**Regulatory Considerations**:
+- Comply with data protection regulations (e.g., GDPR for user data if applicable).
+- Secure sensitive data (e.g., Google Calendar API credentials) using environment variables.
+- Use HTTPS for all API requests, enforced by WindSURF or server configuration.
+
+## 3. Product Scope
+
+### 3.1 Functional Requirements
+
+1. **Annual Data Fetch**:
+   - Fetch event data from Google Calendar API once a year (e.g., January 1st) for Gregorian, Hijri, and Indonesian calendars.
+   - Convert Gregorian dates to Hijri using a library (e.g., `hijri-js`) and adjust for Indonesia’s rukyat-based dates using a mappings table.
+   - Store data in PostgreSQL with unique `event_id`s, region-specific dates, and update timestamps.
+   - Log fetch operations with details (e.g., number of events, source, timestamp).
+
+2. **Localization with `event_id`**:
+   - Assign a unique `event_id` to each event for consistent identification across regions and calendars.
+   - Support localized event titles and descriptions in Indonesian (`id`), English (`en`), and Arabic (`ar`).
+   - Example: `event_id=123` for "Idul Fitri 1447 H" with `region=indonesia`, `gregorian_date=2025-03-15`, `title="Idul Fitri"` (`language=id`).
+
+3. **Fetch Updated Data**:
+   - Provide an endpoint (`GET /updates/check`) to check the last update timestamp for specific `event_id`s, regions, or calendar types.
+   - Allow users to fetch only updated events using a query parameter (`updated_after`).
+   - Example: `GET /events?event_id=123&region=indonesia&updated_after=2025-01-01T00:00:00Z` returns events updated after the specified timestamp.
+
+4. **Manual Data Fetch (Admin)**:
+   - Endpoint: `POST /events/sync`
+   - Allow admins to manually trigger data fetches from Google Calendar or other sources (e.g., Kementerian Agama data).
+   - Support fetching specific events by `event_id` or all events for a region/calendar.
+   - Update PostgreSQL tables and log operations.
+
+5. **Calendar Mapping Updates (Admin)**:
+   - Endpoint: `POST /calendar/mappings`
+   - Allow admins to update region-specific calendar mappings (e.g., Hijri to Gregorian dates for Indonesia).
+   - Automatically adjust related events in the database based on updated mappings.
+
+6. **WindSURF Integration**:
+   - If WindSURF is an API gateway or firewall, configure rules for:
+     - Admin-only access to `POST /events/sync` and `POST /calendar/mappings`.
+     - Rate limiting for public endpoints (`GET /events`, `GET /updates/check`).
+     - HTTPS enforcement and header validation.
+
+### 3.2 Non-Functional Requirements
+
+- **Performance**:
+  - Optimize PostgreSQL queries with indexes on `event_id`, `region`, and `updated_at`.
+  - Support up to 10,000 concurrent requests per minute for public endpoints with WindSURF rate limiting.
+  - Cache frequently accessed data (e.g., translations, mappings) using Redis if needed.
+
+- **Scalability**:
+  - Handle large datasets (e.g., 1 million events) with PostgreSQL partitioning if necessary.
+  - Support additional regions and languages without schema changes.
+
+- **Security**:
+  - Use JWT for admin authentication, validated via Express.js middleware with TypeScript interfaces.
+  - Store sensitive data (e.g., Google Calendar API keys) in `.env` using `dotenv`.
+  - Enforce HTTPS via WindSURF or Express.js configuration.
+
+- **Reliability**:
+  - Ensure 99.9% uptime with robust error handling for Google Calendar API rate limits and database connectivity issues.
+  - Use PostgreSQL transactions for atomic updates during manual fetches and mapping updates.
+
+- **Maintainability**:
+  - Use TypeScript for type-safe models, interfaces, and middleware to reduce runtime errors.
+  - Use a modular folder structure (see Section 5) for easy updates.
+  - Document endpoints, database schema, and TypeScript types in `README.md`.
+
+## 4. Database Schema (PostgreSQL)
+
+### 4.1 Table: `events`
+- **Purpose**: Store core event data with unique identifiers and region-specific details.
+- **Columns**:
+  - `event_id`: `UUID` or `BIGSERIAL` (Primary Key).
+  - `title`: `VARCHAR(255)` (Neutral title, e.g., "new_year_islam").
+  - `hijri_date`: `TEXT` (e.g., "1447-01-01").
+  - `gregorian_date`: `DATE` (e.g., "2025-06-26").
+  - `calendar_type`: `VARCHAR(50)` (e.g., "hijri", "gregorian", "indonesian").
+  - `region`: `VARCHAR(50)` (e.g., "indonesia", "global").
+  - `source`: `VARCHAR(50)` (e.g., "kemenag", "umm_al_qura", "google_calendar").
+  - `updated_at`: `TIMESTAMP WITH TIME ZONE` (e.g., "2025-08-03T16:40:00Z").
+- **Constraints**:
+  - Unique: `(event_id, region, calendar_type)`.
+  - Indexes: `event_id`, `region`, `updated_at`, partial index on `(event_id, region) WHERE calendar_type = 'hijri'`.
+- **Example**:
+  - `event_id=123`, `title="new_year_islam"`, `hijri_date="1447-01-01"`, `gregorian_date="2025-06-26"`, `region="indonesia"`, `source="kemenag"`.
+
+### 4.2 Table: `event_translations`
+- **Purpose**: Store localized titles and descriptions.
+- **Columns**:
+  - `id`: `BIGSERIAL` (Primary Key).
+  - `event_id`: `UUID` or `BIGINT` (Foreign Key to `events.event_id`).
+  - `language`: `VARCHAR(10)` (e.g., "id", "en", "ar").
+  - `title`: `VARCHAR(255)` (e.g., "Tahun Baru Islam" for `id`).
+  - `description`: `TEXT` (Optional).
+- **Constraints**:
+  - Unique: `(event_id, language)`.
+  - Index: `event_id`, `language`.
+- **Example**:
+  - `event_id=123`, `language="id"`, `title="Tahun Baru Islam"`, `description="Peringatan tahun baru Hijriah"`.
+
+### 4.3 Table: `calendar_mappings`
+- **Purpose**: Store region-specific date mappings, especially for Indonesia’s rukyat-based Hijri.
+- **Columns**:
+  - `id`: `BIGSERIAL` (Primary Key).
+  - `hijri_date`: `TEXT` (e.g., "1447-01-01").
+  - `gregorian_date`: `DATE` (e.g., "2025-06-26").
+  - `region`: `VARCHAR(50)` (e.g., "indonesia").
+  - `source`: `VARCHAR(50)` (e.g., "kemenag", "hisab").
+- **Constraints**:
+  - Unique: `(hijri_date, region, source)`.
+  - Index: `region`, `hijri_date`.
+- **Example**:
+  - `hijri_date="1447-01-01"`, `gregorian_date="2025-06-26"`, `region="indonesia"`, `source="kemenag"`.
+
+### 4.4 Table: `update_metadata`
+- **Purpose**: Track last update timestamps for efficient fetching.
+- **Columns**:
+  - `id`: `BIGSERIAL` (Primary Key).
+  - `region`: `VARCHAR(50)` (e.g., "indonesia").
+  - `calendar_type`: `VARCHAR(50)` (e.g., "hijri").
+  - `event_id`: `UUID` or `BIGINT` (Optional, for event-specific updates).
+  - `last_updated`: `TIMESTAMP WITH TIME ZONE` (e.g., "2025-08-03T16:40:00Z").
+  - `source`: `VARCHAR(50)` (e.g., "google_calendar", "manual").
+- **Constraints**:
+  - Index: `region`, `calendar_type`, `event_id`.
+- **Example**:
+  - `region="indonesia"`, `calendar_type="hijri"`, `event_id=123`, `last_updated="2025-08-03T16:40:00Z"`, `source="kemenag"`.
+
+## 5. Folder Structure
+
+```
+project-root/
+├── src/
+│   ├── api/
+│   │   ├── handlers/
+│   │   │   ├── calendar.ts       # Handlers for /events, /events/:event_id
+│   │   │   ├── update.ts         # Handler for /updates/check
+│   │   │   └── mappings.ts       # Handler for /calendar/mappings
+│   │   ├── middleware/
+│   │   │   ├── auth.ts           # JWT validation for admin
+│   │   │   ├── logging.ts        # Request logging
+│   │   │   └── validation.ts     # Validate event_id, region, etc.
+│   │   └── routes/
+│   │       └── index.ts          # Route setup
+│   ├── config/
+│   │   └── config.ts             # Load PostgreSQL, WindSURF, Google API configs
+│   ├── db/
+│   │   ├── models/
+│   │   │   ├── calendar.ts       # Sequelize models with TypeScript interfaces
+│   │   │   ├── event.ts          # Event model
+│   │   │   ├── eventTranslation.ts # Translation model
+│   │   │   └── updateMetadata.ts # Update tracking model
+│   │   └── repository/
+│   │       ├── calendarRepository.ts # PostgreSQL queries
+│   │       ├── translationRepository.ts # Queries for translations
+│   │       └── updateRepository.ts # Queries for update_metadata
+│   ├── services/
+│   │   ├── calendarService.ts    # Business logic for fetching/syncing
+│   │   ├── converter.ts          # Calendar conversion logic
+│   │   └── translation.ts        # Localization logic
+│   └── google/
+│       └── googleCalendar.ts     # Google Calendar API integration
+├── scripts/
+│   ├── fetchCalendar.ts          # Annual Google Calendar fetch
+│   └── updateMappings.ts         # Script for Kemenag mapping updates
+├── .env                          # PostgreSQL creds, API keys
+├── package.json                  # Node.js dependencies
+├── tsconfig.json                 # TypeScript configuration
+├── README.md                     # Documentation
+└── server.ts                     # Express.js entry point
+```
+
+## 6. API Endpoints
+
+### 6.1 GET /updates/check
+- **Purpose**: Check the last update timestamp for events or regions.
+- **Query Parameters**:
+  - `event_id`: Optional, specific event (e.g., "123").
+  - `region`: Optional (e.g., "indonesia").
+  - `calendar_type`: Optional (e.g., "hijri").
+- **Response**:
+  ```json
+  {
+    "event_id": "123",
+    "region": "indonesia",
+    "calendar_type": "hijri",
+    "last_updated": "2025-08-03T16:40:00Z",
+    "source": "kemenag"
+  }
+  ```
+- **Rules**:
+  - Query `update_metadata` for `last_updated`.
+  - Return empty response if no data exists.
+  - Use TypeScript interfaces to validate response structure.
+
+### 6.2 GET /events or GET /events/:event_id
+- **Purpose**: Fetch events, optionally filtered by `event_id`, region, language, or update timestamp.
+- **Query Parameters** (for `/events`):
+  - `event_id`: Optional.
+  - `region`: Optional (e.g., "indonesia").
+  - `calendar_type`: Optional (e.g., "hijri").
+  - `language`: Optional (e.g., "id").
+  - `updated_after`: Optional timestamp (e.g., "2025-01-01T00:00:00Z").
+- **Path Parameter** (for `/events/:event_id`):
+  - `:event_id`: Specific event ID.
+- **Response**:
+  ```json
+  {
+    "events": [
+      {
+        "event_id": "123",
+        "title": "Tahun Baru Islam",
+        "hijri_date": "1447-01-01",
+        "gregorian_date": "2025-06-26",
+        "calendar_type": "hijri",
+        "region": "indonesia",
+        "source": "kemenag",
+        "updated_at": "2025-08-03T16:40:00Z"
+      }
+    ]
+  }
+  ```
+- **Rules**:
+  - Join `events` and `event_translations` for localized data.
+  - Filter by `updated_at > updated_after` if provided.
+  - Use `calendar_mappings` for Indonesia’s rukyat-based dates.
+  - Define TypeScript interfaces for request and response payloads.
+
+### 6.3 POST /events/sync
+- **Purpose**: Manual fetch of event data (admin-only).
+- **Body**:
+  ```json
+  {
+    "event_id": "123",
+    "region": "indonesia",
+    "calendar_type": "hijri",
+    "source": "google_calendar"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "event_id": "123",
+    "last_updated": "2025-08-03T16:40:00Z",
+    "message": "Event synchronized successfully"
+  }
+  ```
+- **Rules**:
+  - Require `role=admin` in JWT (via `middleware/auth.ts` and WindSURF).
+  - Upsert into `events` and `event_translations` using PostgreSQL `ON CONFLICT`.
+  - Update `update_metadata` with new timestamp.
+  - Use TypeScript to enforce type safety for request body and database operations.
+
+### 6.4 POST /calendar/mappings
+- **Purpose**: Update calendar mappings (admin-only).
+- **Body**:
+  ```json
+  {
+    "event_id": "123",
+    "hijri_date": "1447-01-01",
+    "gregorian_date": "2025-06-26",
+    "region": "indonesia",
+    "source": "kemenag"
+  }
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "success",
+    "event_id": "123",
+    "message": "Calendar mapping updated"
+  }
+  ```
+- **Rules**:
+  - Require `role=admin`.
+  - Use PostgreSQL transaction to update `calendar_mappings` and related `events` entries.
+  - Log changes in `src/services/logging.ts`.
+  - Define TypeScript interfaces for mapping data.
+
+## 7. Business Rules
+
+1. **Prioritize Rukyat for Indonesia**:
+   - For `region=indonesia`, use `calendar_mappings` with `source=kemenag` for Hijri dates.
+   - Fallback to hisab (`hijri-js`) if no mapping exists, logging fallback in `src/services/logging.ts`.
+
+2. **Consistent `event_id`**:
+   - Ensure `event_id` is unique across regions and calendars, with unique constraint `(event_id, region, calendar_type)` in `events`.
+
+3. **Localization**:
+   - Return localized `title` and `description` from `event_translations` based on `language` parameter.
+   - Fallback to `language="id"` if translation unavailable.
+
+4. **Updated Data Filtering**:
+   - Filter `events` by `updated_at > updated_after` for efficiency.
+   - Use PostgreSQL indexes for fast queries.
+
+5. **Admin Access**:
+   - Restrict `POST /events/sync` and `POST /calendar/mappings` to `role=admin` via JWT and WindSURF rules.
+   - Return HTTP 403 for unauthorized access.
+
+6. **Prevent Duplicates**:
+   - Use PostgreSQL `ON CONFLICT` for upserts in `events` and `calendar_mappings`.
+
+7. **WindSURF Rules** (if applicable):
+   - Enforce HTTPS and validate JWT for admin endpoints.
+   - Apply rate limiting (e.g., 100 requests/minute for public endpoints).
+   - Log admin actions for auditing.
+
+## 8. Technical Requirements
+
+- **Backend**: Express.js with TypeScript (Node.js) and libraries:
+  - `@googleapis/calendar` for Google Calendar API.
+  - `dotenv` for environment variables.
+  - `hijri-js` for Hijri conversions.
+  - `pg` or `sequelize` with `@types/sequelize` for PostgreSQL driver.
+  - `express` with `@types/express` for routing.
+  - `winston` for logging.
+  - `node-cron` with `@types/node-cron` for annual fetch scheduling.
+  - `jsonwebtoken` with `@types/jsonwebtoken` for JWT authentication.
+- **Database**: PostgreSQL with indexes, unique constraints, and `TIMESTAMP WITH TIME ZONE`.
+- **TypeScript**:
+  - Define interfaces for request/response payloads, database models, and service functions.
+  - Use `tsconfig.json` with strict type checking (`strict: true`).
+- **Infrastructure**: WindSURF (assumed API gateway/firewall) for access control, rate limiting, and HTTPS enforcement.
+- **Environment**: Store credentials in `.env`.
+
+## 9. Assumptions
+
+- WindSURF is an API gateway or firewall; specific configuration details to be clarified.
+- Kementerian Agama provides Hijri date mappings (e.g., via CSV or manual input).
+- Google Calendar API quotas are sufficient for annual fetches.
+- Users primarily access the API from Indonesia, requiring robust support for `region=indonesia`.
+
+## 10. Risks and Mitigation
+
+- **Risk**: Inaccurate Hijri dates for Indonesia due to rukyat variability.
+  - **Mitigation**: Prioritize Kemenag data in `calendar_mappings` and allow admin updates via `POST /calendar/mappings`.
+- **Risk**: Google Calendar API rate limits.
+  - **Mitigation**: Batch fetches and cache data in PostgreSQL.
+- **Risk**: Unauthorized access to admin endpoints.
+  - **Mitigation**: Use JWT and WindSURF to enforce `role=admin`.
+- **Risk**: TypeScript type errors during development.
+  - **Mitigation**: Use strict type checking and comprehensive unit tests.
+- **Risk**: Large dataset impacts performance.
+  - **Mitigation**: Use PostgreSQL indexes, partitioning, and caching (Redis if needed).
+
+## 11. Milestones
+
+1. **Phase 1: Setup and Database** (2 weeks)
+   - Initialize Express.js with TypeScript project, PostgreSQL schema, and folder structure.
+   - Implement `calendarRepository.ts` and `updateRepository.ts` with TypeScript interfaces.
+
+2. **Phase 2: Annual Fetch and Conversion** (2 weeks)
+   - Develop `fetchCalendar.ts` for annual Google Calendar fetch.
+   - Implement `converter.ts` for Hijri conversions with TypeScript types.
+
+3. **Phase 3: API Endpoints** (3 weeks)
+   - Build `GET /events`, `GET /updates/check`, `POST /events/sync`, and `POST /calendar/mappings` with TypeScript middleware.
+   - Add middleware for validation and authentication.
+
+4. **Phase 4: WindSURF Integration and Testing** (2 weeks)
+   - Configure WindSURF rules for access control and rate limiting.
+   - Test endpoints, localization, and rukyat handling with TypeScript type safety.
+
+5. **Phase 5: Deployment and Documentation** (1 week)
+   - Deploy API and document in `README.md`, including TypeScript interfaces.
+   - Set up PostgreSQL backups and logging.
+
+## 12. Success Metrics
+
+- **Performance**: API responds to `GET /events` in <200ms for 80% of requests.
+- **Accuracy**: 100% of `region=indonesia` Hijri dates match Kementerian Agama announcements.
+- **Security**: Zero unauthorized access to admin endpoints.
+- **Type Safety**: Zero TypeScript-related runtime errors after deployment.
+- **User Satisfaction**: Support queries for 95% of events with correct localization.
