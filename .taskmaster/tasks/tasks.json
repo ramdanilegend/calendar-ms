@@ -35,8 +35,65 @@
         "dependencies": [
           2
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Base Repository Interface and Common Utilities",
+            "description": "Create the foundation for all repositories with shared interfaces, types, and utility functions",
+            "dependencies": [],
+            "details": "1. Create `src/db/repository/baseRepository.ts` with common interfaces\n2. Define TypeScript interfaces for basic CRUD operations\n3. Implement utility functions for prepared statements\n4. Create error handling wrappers for database operations\n5. Define common types for query parameters and results\n6. Implement pagination utilities\n7. Create logging helpers for database operations",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Calendar Repository Implementation",
+            "description": "Implement the calendar repository for managing events and calendar data",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "1. Create `src/db/repository/calendarRepository.ts`\n2. Implement interfaces for event data structures\n3. Create methods for fetching events by ID, region, and calendar type\n4. Implement filtering events by update timestamp\n5. Add methods for upserting events\n6. Implement functions for managing calendar mappings\n7. Create efficient PostgreSQL queries with proper indexing\n8. Add unit tests for all repository methods",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Translation Repository Implementation",
+            "description": "Implement the translation repository for managing event translations in multiple languages",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "1. Create `src/db/repository/translationRepository.ts`\n2. Define interfaces for translation data structures\n3. Implement methods for fetching translations by event ID and language\n4. Create functions for upserting translations\n5. Add methods for bulk translation operations\n6. Implement language fallback logic\n7. Create efficient queries with proper indexing\n8. Add unit tests for all repository methods",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Update Metadata Repository Implementation",
+            "description": "Implement the update repository for tracking and managing update metadata",
+            "dependencies": [
+              "3.1"
+            ],
+            "details": "1. Create `src/db/repository/updateRepository.ts`\n2. Define interfaces for update metadata structures\n3. Implement methods for tracking last update timestamps\n4. Create functions for retrieving update history\n5. Add methods for managing update status\n6. Implement efficient queries with proper indexing\n7. Create utilities for update validation\n8. Add unit tests for all repository methods",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Transaction and Error Handling Utilities",
+            "description": "Implement transaction support and comprehensive error handling for database operations",
+            "dependencies": [
+              "3.1",
+              "3.2",
+              "3.3",
+              "3.4"
+            ],
+            "details": "1. Create `src/db/repository/transactionUtils.ts`\n2. Implement transaction wrapper functions\n3. Create utilities for atomic operations across repositories\n4. Add rollback mechanisms for failed transactions\n5. Implement detailed error classification and handling\n6. Create logging utilities for transaction operations\n7. Add retry logic for transient database errors\n8. Implement unit tests for transaction scenarios",
+            "status": "done",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 4,
@@ -143,7 +200,7 @@
     ],
     "metadata": {
       "created": "2025-08-16T07:32:05.636Z",
-      "updated": "2025-08-17T06:25:59.629Z",
+      "updated": "2025-08-17T09:42:40.996Z",
       "description": "Tasks for master context"
     }
   }
