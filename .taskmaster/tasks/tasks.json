@@ -177,8 +177,52 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Core Gregorian to Hijri Conversion Implementation",
+            "description": "Implement the core conversion utilities for transforming Gregorian dates to Hijri dates using the hijri-js library",
+            "dependencies": [],
+            "details": "1. Install hijri-js library with `npm install hijri-js`\n2. Create base TypeScript interfaces in `src/services/converter.ts` for date formats and conversion results\n3. Implement the core conversion method for Gregorian to standard Hijri dates\n4. Add proper error handling for invalid date inputs\n5. Create unit tests for conversion accuracy with known date pairs\n6. Implement logging for conversion operations",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Indonesia's Rukyat-based Calendar Implementation",
+            "description": "Implement specialized handling for Indonesia's rukyat-based Hijri calendar which differs from standard Hijri calculations",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "1. Research and document Indonesia's rukyat-based calendar rules\n2. Extend the converter service to handle Indonesia-specific date adjustments\n3. Implement logic to determine when rukyat observations override calculated dates\n4. Create a configuration system for regional variations within Indonesia\n5. Develop test cases specifically for Indonesian calendar edge cases\n6. Implement logging for Indonesia-specific conversions",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Regional Mapping and Fallback Logic",
+            "description": "Implement the system for applying regional calendar mappings and fallback logic when official mappings are unavailable",
+            "dependencies": [
+              "5.1",
+              "5.2"
+            ],
+            "details": "1. Create interfaces for regional calendar mappings\n2. Implement methods to retrieve and apply region-specific date adjustments\n3. Develop fallback logic for when mappings are unavailable\n4. Create a priority system for multiple mapping sources\n5. Implement caching for frequently accessed mappings\n6. Add comprehensive tests for mapping application and fallback scenarios\n7. Ensure thread-safety for concurrent conversion operations",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Validation and Utility Functions",
+            "description": "Implement validation logic for date formats and ranges, plus utility functions for date manipulation across calendar systems",
+            "dependencies": [
+              "5.1"
+            ],
+            "details": "1. Create comprehensive date validation functions for all supported calendar systems\n2. Implement utility functions for date manipulation (add/subtract days, months, years)\n3. Add range validation to prevent out-of-range date conversions\n4. Create formatting utilities for different regional date display preferences\n5. Implement comparison functions that work across different calendar systems\n6. Develop test cases for all validation and utility functions\n7. Document usage examples for the utility functions",
+            "status": "done",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 6,
@@ -259,7 +303,7 @@
     ],
     "metadata": {
       "created": "2025-08-16T07:32:05.636Z",
-      "updated": "2025-08-17T12:51:19.858Z",
+      "updated": "2025-08-18T02:27:54.704Z",
       "description": "Tasks for master context"
     }
   }

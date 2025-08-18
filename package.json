@@ -28,6 +28,7 @@
     "express": "^5.1.0",
     "google-auth-library": "^10.2.1",
     "googleapis": "^156.0.0",
+    "hijri-js": "^1.0.25",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.2.1",
     "pg": "^8.16.3",
