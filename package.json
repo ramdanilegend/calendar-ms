@@ -11,7 +11,10 @@
     "test:watch": "jest --watch",
     "migrate": "ts-node scripts/migrate.ts up",
     "migrate:down": "ts-node scripts/migrate.ts down",
-    "migrate:fresh": "ts-node scripts/migrate.ts fresh"
+    "migrate:fresh": "ts-node scripts/migrate.ts fresh",
+    "fetch-calendar": "ts-node scripts/fetchCalendar.ts",
+    "update-mappings": "ts-node scripts/updateMappings.ts",
+    "schedule:status": "ts-node -e \"import { SchedulerService } from './src/services/scheduler'; const s = new SchedulerService(); s.initialize().then(() => console.log(s.getJobStatus())); s.shutdown();\""
   },
   "keywords": [],
   "author": "",
@@ -24,6 +27,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/pg": "^8.15.5",
     "@types/sequelize": "^4.28.20",
+    "commander": "^14.0.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "google-auth-library": "^10.2.1",
