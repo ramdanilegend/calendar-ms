@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction, Application } from 'express';
 import { requestLogger, errorLogger } from './api/middleware/logging';
 import routes from './api/routes';
+import { setupSwagger, addDocumentationLinks } from './config/swagger';
 
 // Create Express application
 const app: Application = express();
@@ -11,8 +12,14 @@ app.use(express.json());
 // Parse URL-encoded bodies
 app.use(express.urlencoded({ extended: true }));
 
+// Add documentation links to responses
+app.use(addDocumentationLinks);
+
 // Add request logging middleware
 app.use(requestLogger);
+
+// Set up API documentation
+setupSwagger(app);
 
 // Add routes
 app.use('/api/v1', routes);

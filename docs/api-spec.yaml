@@ -1,0 +1,1064 @@
+openapi: 3.0.3
+info:
+  title: Calendar Microservice API
+  description: |
+    A comprehensive calendar microservice API that fetches data from Google Calendar and serves localized event data with support for Gregorian, Hijri, and Indonesian calendars.
+    
+    ## Features
+    - Multi-calendar support (Gregorian, Hijri, Indonesian)
+    - Multi-language translations
+    - Regional calendar mappings
+    - Admin authentication and authorization
+    - Comprehensive caching system
+    - Real-time synchronization with Google Calendar
+  version: 1.0.0
+  contact:
+    name: Calendar MS Team
+    email: support@calendar-ms.com
+  license:
+    name: ISC
+
+servers:
+  - url: https://api.calendar-ms.com/api/v1
+    description: Production server
+  - url: http://localhost:3000/api/v1
+    description: Development server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: Returns the health status of the API
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "ok"
+                  timestamp:
+                    type: string
+                    format: date-time
+                    example: "2024-01-01T00:00:00.000Z"
+
+  /updates/check:
+    get:
+      tags:
+        - Updates
+      summary: Check last update information
+      description: Returns information about the last update for a specific region
+      operationId: checkLastUpdate
+      parameters:
+        - name: region
+          in: query
+          description: Region code to check updates for
+          required: false
+          schema:
+            type: string
+            enum: [id, us, sa, my, global]
+            example: "id"
+      responses:
+        '200':
+          description: Update information retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: '#/components/schemas/UpdateInfo'
+        '404':
+          description: No update information found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid region parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /events:
+    get:
+      tags:
+        - Events
+      summary: Get calendar events
+      description: Retrieve a list of calendar events with optional filtering and pagination
+      operationId: getEvents
+      parameters:
+        - name: region
+          in: query
+          description: Filter events by region
+          schema:
+            type: string
+            enum: [id, us, sa, my, global]
+            example: "id"
+        - name: language
+          in: query
+          description: Language for event translations
+          schema:
+            type: string
+            enum: [id, en, ar]
+            example: "en"
+        - name: calendar_type
+          in: query
+          description: Type of calendar to use
+          schema:
+            type: string
+            enum: [gregorian, hijri, hijri_indonesia]
+            example: "gregorian"
+        - name: start_date
+          in: query
+          description: Filter events from this date
+          schema:
+            type: string
+            format: date-time
+            example: "2024-01-01T00:00:00.000Z"
+        - name: end_date
+          in: query
+          description: Filter events until this date
+          schema:
+            type: string
+            format: date-time
+            example: "2024-12-31T23:59:59.999Z"
+        - name: page
+          in: query
+          description: Page number for pagination
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+            example: 1
+        - name: limit
+          in: query
+          description: Number of events per page
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+            example: 20
+      responses:
+        '200':
+          description: Events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      events:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Event'
+                      pagination:
+                        $ref: '#/components/schemas/PaginationInfo'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /events/{eventId}:
+    get:
+      tags:
+        - Events
+      summary: Get a specific event by ID
+      description: Retrieve detailed information about a specific calendar event
+      operationId: getEventById
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique identifier for the event
+          schema:
+            type: string
+            example: "event-123"
+        - name: language
+          in: query
+          description: Language for event translations
+          schema:
+            type: string
+            enum: [id, en, ar]
+            example: "en"
+      responses:
+        '200':
+          description: Event retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: '#/components/schemas/Event'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid event ID
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /events/sync:
+    post:
+      tags:
+        - Admin
+      summary: Synchronize events from Google Calendar
+      description: Manually trigger synchronization of events from Google Calendar (Admin only)
+      operationId: syncEvents
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                region:
+                  type: string
+                  enum: [id, us, sa, my, global]
+                  example: "id"
+                force_refresh:
+                  type: boolean
+                  default: false
+                  example: false
+                year:
+                  type: integer
+                  minimum: 2020
+                  maximum: 2030
+                  example: 2024
+      responses:
+        '200':
+          description: Sync completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      events_synced:
+                        type: integer
+                        example: 150
+                      last_sync:
+                        type: string
+                        format: date-time
+                        example: "2024-01-01T00:00:00.000Z"
+        '202':
+          description: Sync started (async operation)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "accepted"
+                  message:
+                    type: string
+                    example: "Sync operation started"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '500':
+          description: Sync failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /calendar/mappings:
+    post:
+      tags:
+        - Admin
+      summary: Update calendar mappings
+      description: Update calendar date mappings between different calendar systems (Admin only)
+      operationId: updateCalendarMappings
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mappings:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CalendarMapping'
+              example:
+                mappings:
+                  - event_id: "event-123"
+                    region: "id"
+                    original_date: "2024-01-01T00:00:00.000Z"
+                    gregorian_date: "2024-01-01T00:00:00.000Z"
+                    hijri_date: "1445-06-19T00:00:00.000Z"
+      responses:
+        '200':
+          description: All mappings updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: object
+                    properties:
+                      updated_count:
+                        type: integer
+                        example: 5
+        '207':
+          description: Partial success - some mappings failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "partial_success"
+                  data:
+                    type: object
+                    properties:
+                      successful:
+                        type: integer
+                        example: 3
+                      failed:
+                        type: integer
+                        example: 2
+                      errors:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            event_id:
+                              type: string
+                            error:
+                              type: string
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+        '400':
+          description: Invalid mapping data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+  /events/{eventId}/translations:
+    get:
+      tags:
+        - Translations
+      summary: Get all translations for an event
+      description: Retrieve all available translations for a specific event
+      operationId: getEventTranslations
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique identifier for the event
+          schema:
+            type: string
+            example: "event-123"
+      responses:
+        '200':
+          description: Translations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EventTranslation'
+        '404':
+          description: Event not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    post:
+      tags:
+        - Translations
+      summary: Create a new translation for an event
+      description: Add a new language translation for a specific event
+      operationId: createEventTranslation
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique identifier for the event
+          schema:
+            type: string
+            example: "event-123"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTranslationRequest'
+      responses:
+        '201':
+          description: Translation created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: '#/components/schemas/EventTranslation'
+        '400':
+          description: Invalid translation data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+        '409':
+          description: Translation already exists for this language
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /events/{eventId}/translations/{language}:
+    get:
+      tags:
+        - Translations
+      summary: Get a specific translation
+      description: Retrieve translation for an event in a specific language
+      operationId: getEventTranslation
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique identifier for the event
+          schema:
+            type: string
+            example: "event-123"
+        - name: language
+          in: path
+          required: true
+          description: Language code for the translation
+          schema:
+            type: string
+            enum: [id, en, ar]
+            example: "en"
+      responses:
+        '200':
+          description: Translation retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: '#/components/schemas/EventTranslation'
+        '404':
+          description: Translation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Translations
+      summary: Update a translation
+      description: Update an existing translation for an event
+      operationId: updateEventTranslation
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique identifier for the event
+          schema:
+            type: string
+            example: "event-123"
+        - name: language
+          in: path
+          required: true
+          description: Language code for the translation
+          schema:
+            type: string
+            enum: [id, en, ar]
+            example: "en"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTranslationRequest'
+      responses:
+        '200':
+          description: Translation updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: '#/components/schemas/EventTranslation'
+        '404':
+          description: Translation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Invalid translation data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+
+    delete:
+      tags:
+        - Translations
+      summary: Delete a translation
+      description: Remove a translation for an event in a specific language
+      operationId: deleteEventTranslation
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique identifier for the event
+          schema:
+            type: string
+            example: "event-123"
+        - name: language
+          in: path
+          required: true
+          description: Language code for the translation
+          schema:
+            type: string
+            enum: [id, en, ar]
+            example: "en"
+      responses:
+        '200':
+          description: Translation deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Translation deleted successfully"
+        '404':
+          description: Translation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /events/{eventId}/translations/{language}/formatted:
+    get:
+      tags:
+        - Translations
+      summary: Get formatted translation
+      description: Retrieve a formatted translation with additional metadata
+      operationId: getFormattedTranslation
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          description: Unique identifier for the event
+          schema:
+            type: string
+            example: "event-123"
+        - name: language
+          in: path
+          required: true
+          description: Language code for the translation
+          schema:
+            type: string
+            enum: [id, en, ar]
+            example: "en"
+      responses:
+        '200':
+          description: Formatted translation retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: '#/components/schemas/FormattedTranslation'
+        '404':
+          description: Translation not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /translations/cache/stats:
+    get:
+      tags:
+        - Admin
+      summary: Get translation cache statistics
+      description: Retrieve statistics about the translation cache (Admin only)
+      operationId: getCacheStats
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cache statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  data:
+                    $ref: '#/components/schemas/CacheStats'
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+  /translations/cache/clear:
+    post:
+      tags:
+        - Admin
+      summary: Clear translation cache
+      description: Clear all cached translations (Admin only)
+      operationId: clearCache
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Cache cleared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "success"
+                  message:
+                    type: string
+                    example: "Cache cleared successfully"
+        '401':
+          $ref: '#/components/responses/UnauthorizedError'
+        '403':
+          $ref: '#/components/responses/ForbiddenError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from authentication
+
+  schemas:
+    Event:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        event_id:
+          type: string
+          example: "event-123"
+        region:
+          type: string
+          enum: [id, us, sa, my, global]
+          example: "id"
+        calendar_type:
+          type: string
+          enum: [gregorian, hijri, hijri_indonesia]
+          example: "gregorian"
+        start_date:
+          type: string
+          format: date-time
+          example: "2024-01-01T10:00:00.000Z"
+        end_date:
+          type: string
+          format: date-time
+          example: "2024-01-01T11:00:00.000Z"
+        is_all_day:
+          type: boolean
+          example: false
+        status:
+          type: string
+          enum: [confirmed, tentative, cancelled]
+          example: "confirmed"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        translations:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventTranslation'
+
+    EventTranslation:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        event_id:
+          type: string
+          example: "event-123"
+        language:
+          type: string
+          enum: [id, en, ar]
+          example: "en"
+        title:
+          type: string
+          example: "New Year Celebration"
+        description:
+          type: string
+          nullable: true
+          example: "Annual celebration of the new year"
+        location:
+          type: string
+          nullable: true
+          example: "Central Park, Jakarta"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+
+    CalendarMapping:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        event_id:
+          type: string
+          example: "event-123"
+        region:
+          type: string
+          enum: [id, us, sa, my, global]
+          example: "id"
+        original_date:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        gregorian_date:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        hijri_date:
+          type: string
+          format: date-time
+          nullable: true
+          example: "1445-06-19T00:00:00.000Z"
+        indonesian_date:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-01-01T00:00:00.000Z"
+        created_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        updated_at:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+
+    UpdateInfo:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        source:
+          type: string
+          example: "google_calendar"
+        region:
+          type: string
+          enum: [id, us, sa, my, global]
+          example: "id"
+        last_successful_update:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        status:
+          type: string
+          enum: [success, failure, in_progress]
+          example: "success"
+        error_details:
+          type: string
+          nullable: true
+          example: null
+
+    PaginationInfo:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        limit:
+          type: integer
+          example: 20
+        total:
+          type: integer
+          example: 150
+        total_pages:
+          type: integer
+          example: 8
+        has_next:
+          type: boolean
+          example: true
+        has_prev:
+          type: boolean
+          example: false
+
+    FormattedTranslation:
+      type: object
+      properties:
+        eventId:
+          type: string
+          example: "event-123"
+        language:
+          type: string
+          enum: [id, en, ar]
+          example: "en"
+        data:
+          type: object
+          properties:
+            title:
+              type: string
+              example: "New Year Celebration"
+            description:
+              type: string
+              nullable: true
+              example: "Annual celebration of the new year"
+            location:
+              type: string
+              nullable: true
+              example: "Central Park, Jakarta"
+        fallbackUsed:
+          type: boolean
+          example: false
+        cached:
+          type: boolean
+          example: true
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+
+    CacheStats:
+      type: object
+      properties:
+        total_entries:
+          type: integer
+          example: 150
+        cache_hit_rate:
+          type: number
+          format: float
+          example: 0.85
+        memory_usage:
+          type: string
+          example: "2.5MB"
+        oldest_entry:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+        newest_entry:
+          type: string
+          format: date-time
+          example: "2024-01-01T12:00:00.000Z"
+
+    CreateTranslationRequest:
+      type: object
+      required:
+        - language
+        - title
+      properties:
+        language:
+          type: string
+          enum: [id, en, ar]
+          example: "en"
+        title:
+          type: string
+          example: "New Year Celebration"
+        description:
+          type: string
+          nullable: true
+          example: "Annual celebration of the new year"
+        location:
+          type: string
+          nullable: true
+          example: "Central Park, Jakarta"
+
+    UpdateTranslationRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Updated New Year Celebration"
+        description:
+          type: string
+          nullable: true
+          example: "Updated annual celebration of the new year"
+        location:
+          type: string
+          nullable: true
+          example: "Updated Central Park, Jakarta"
+
+    ErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+          example: "Resource not found"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-01T00:00:00.000Z"
+
+    ValidationErrorResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: "error"
+        message:
+          type: string
+          example: "Validation failed"
+        data:
+          type: object
+          properties:
+            validation_errors:
+              type: array
+              items:
+                type: object
+                properties:
+                  field:
+                    type: string
+                    example: "region"
+                  message:
+                    type: string
+                    example: "Invalid region code"
+                  received:
+                    type: string
+                    example: "invalid"
+
+  responses:
+    UnauthorizedError:
+      description: Authentication token is missing or invalid
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Authentication required"
+              code:
+                type: string
+                example: "TOKEN_REQUIRED"
+
+    ForbiddenError:
+      description: Insufficient permissions to access this resource
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              status:
+                type: string
+                example: "error"
+              message:
+                type: string
+                example: "Insufficient permissions"
+              code:
+                type: string
+                example: "INSUFFICIENT_PERMISSIONS"
+
+tags:
+  - name: Health
+    description: Health check endpoints
+  - name: Updates
+    description: Update information and status
+  - name: Events
+    description: Calendar events management
+  - name: Translations
+    description: Event translation management
+  - name: Admin
+    description: Administrative operations (requires admin authentication)

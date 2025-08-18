@@ -435,19 +435,50 @@ beforeAll(async () => {
 
 // Close all connections after all tests
 afterAll(async () => {
-  console.log('\n🔄 Closing database connections...');
+  console.log('\n🔄 Closing database connections and cleaning up...');
   try {
-    // Force close all connections
-    await runQuery(testSequelize, `SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE pid <> pg_backend_pid()`);
+    // Stop any remaining cron tasks that might prevent Jest from exiting
+    const cron = require('node-cron');
+    if (cron.getTasks) {
+      const tasks = cron.getTasks();
+      tasks.forEach(task => {
+        try {
+          task.stop();
+        } catch (err) {
+          console.warn('Warning: Could not stop cron task:', err.message);
+        }
+      });
+      console.log('✅ Stopped remaining cron tasks');
+    }
+
+    // Clean up translation service singleton
+    try {
+      const { translationService } = require('./src/services/translation');
+      if (translationService && typeof translationService.cleanup === 'function') {
+        translationService.cleanup();
+        console.log('✅ Translation service cleaned up');
+      }
+    } catch (err) {
+      console.warn('Warning: Could not cleanup translation service:', err.message);
+    }
+
+    const { testSequelize } = require('./src/db/models/test-models');
     
-    // Close the Sequelize connection
-    await testSequelize.close();
+    // Close all active connections more gracefully
+    if (testSequelize && typeof testSequelize.close === 'function') {
+      await testSequelize.close();
+      console.log('✅ Sequelize connection closed');
+    }
     
-    // Set a timeout to ensure Node has time to clean up any remaining connections
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Additional cleanup for any remaining connections
+    if (testSequelize?.connectionManager) {
+      await testSequelize.connectionManager.close();
+      console.log('✅ Connection manager closed');
+    }
     
-    console.log('✅ Database connections closed');
+    console.log('✅ All database connections closed and cleanup completed');
   } catch (error) {
-    console.error('❌ Error closing database connection:', error.message);
+    console.error('❌ Error during cleanup:', error.message);
+    // Don't throw to prevent test failures during cleanup
   }
-});
+}, 15000); // Increase timeout for cleanup

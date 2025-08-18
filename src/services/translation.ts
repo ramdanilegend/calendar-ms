@@ -460,6 +460,17 @@ export class TranslationService {
     }, this.options.cacheTTL / 2);
   }
 
+  /**
+   * Stop cache cleanup and clear resources
+   */
+  public cleanup(): void {
+    if (this.cacheCleanupInterval) {
+      clearInterval(this.cacheCleanupInterval);
+      this.cacheCleanupInterval = null;
+    }
+    this.cache.clear();
+  }
+
   private log(message: string, level: 'info' | 'error' = 'info'): void {
     if (this.options.enableLogging) {
       const timestamp = new Date().toISOString();
@@ -468,5 +479,7 @@ export class TranslationService {
   }
 }
 
-// Export singleton instance
-export const translationService = new TranslationService();
+// Export singleton instance - disable cache cleanup in test environment
+export const translationService = new TranslationService({
+  cacheEnabled: process.env.NODE_ENV !== 'test'
+});

@@ -222,7 +222,10 @@ describe('CalendarScheduler', () => {
   });
 
   afterEach(() => {
-    scheduler.stopAllScheduledTasks();
+    // Ensure all scheduled tasks are stopped to prevent hanging
+    if (scheduler) {
+      scheduler.stopAllScheduledTasks();
+    }
   });
 
   describe('scheduleAnnualSync', () => {
