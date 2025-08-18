@@ -26,3 +26,6 @@ node_modules/
 
 #build
 dist/
+
+#google service account
+src/config/service-account-calendar-ms.json
