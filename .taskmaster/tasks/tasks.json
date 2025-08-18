@@ -105,8 +105,67 @@
         "dependencies": [
           3
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Authentication and API Client Setup",
+            "description": "Set up Google Calendar API client and implement authentication using service account credentials",
+            "dependencies": [],
+            "details": "1. Install Google Calendar API client: `npm install @googleapis/calendar`\n2. Create `src/google/googleCalendar.ts` file for API integration\n3. Implement service account authentication flow\n4. Create TypeScript interfaces for authentication configuration\n5. Implement error handling for authentication failures\n6. Add unit tests with mocked authentication responses\n7. Create a configuration file for API credentials and settings",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 2,
+            "title": "Calendar Data Fetching Implementation",
+            "description": "Implement methods to fetch events from different calendar types (Gregorian, Hijri, and Indonesian)",
+            "dependencies": [
+              "4.1"
+            ],
+            "details": "1. Create TypeScript interfaces for Google Calendar API responses\n2. Implement methods to fetch Gregorian calendar events\n3. Implement methods to fetch Hijri calendar events\n4. Implement methods to fetch Indonesian calendar events\n5. Add error handling for API response parsing\n6. Create utility functions for date formatting and validation\n7. Implement logging for successful and failed API calls",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 3,
+            "title": "Rate Limiting and Batch Processing",
+            "description": "Implement rate limiting, retry logic, and batch processing for efficient API usage",
+            "dependencies": [
+              "4.1",
+              "4.2"
+            ],
+            "details": "1. Create a rate limiter utility to respect Google API quotas\n2. Implement exponential backoff retry logic for failed API calls\n3. Create batch processing functionality to optimize API usage\n4. Add configurable parameters for rate limits and retry attempts\n5. Implement circuit breaker pattern to prevent cascading failures\n6. Add detailed logging for rate limiting and retry events\n7. Create unit tests for rate limiting and retry logic",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 4,
+            "title": "Data Transformation and Storage",
+            "description": "Transform Google Calendar data and store it in the PostgreSQL database",
+            "dependencies": [
+              "4.2",
+              "4.3"
+            ],
+            "details": "1. Create data transformation functions to convert API responses to database models\n2. Implement repository methods to store calendar events in the database\n3. Add validation for transformed data before storage\n4. Implement deduplication logic to prevent duplicate events\n5. Create error handling for database operations\n6. Add transaction support for batch inserts\n7. Implement logging for data transformation and storage operations",
+            "status": "done",
+            "testStrategy": ""
+          },
+          {
+            "id": 5,
+            "title": "Scheduler Implementation for Annual Fetches",
+            "description": "Create a scheduler using node-cron for annual fetches of calendar data",
+            "dependencies": [
+              "4.1",
+              "4.2",
+              "4.3",
+              "4.4"
+            ],
+            "details": "1. Install node-cron: `npm install node-cron @types/node-cron`\n2. Create a scheduler service in `src/services/scheduler.ts`\n3. Implement cron job configuration for annual calendar data fetches\n4. Add configurable schedule parameters\n5. Implement error handling and recovery for failed scheduled jobs\n6. Create logging for scheduler events (start, completion, failure)\n7. Add unit tests for scheduler functionality with mocked time",
+            "status": "done",
+            "testStrategy": ""
+          }
+        ]
       },
       {
         "id": 5,
@@ -200,7 +259,7 @@
     ],
     "metadata": {
       "created": "2025-08-16T07:32:05.636Z",
-      "updated": "2025-08-17T09:42:40.996Z",
+      "updated": "2025-08-17T12:51:19.858Z",
       "description": "Tasks for master context"
     }
   }
