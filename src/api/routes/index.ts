@@ -12,6 +12,16 @@ import { checkLastUpdate } from '../handlers/updateHandler';
 import { getEvents, getEventById } from '../handlers/eventsHandler';
 import { syncEvents } from '../handlers/syncHandler';
 import { updateCalendarMappings } from '../handlers/mappingHandler';
+import {
+  getEventTranslations,
+  getEventTranslation,
+  createEventTranslation,
+  updateEventTranslation,
+  deleteEventTranslation,
+  getFormattedTranslation,
+  getCacheStats,
+  clearCache
+} from '../handlers/translationHandler';
 
 const router = Router();
 
@@ -46,6 +56,32 @@ router.post('/calendar/mappings',
   validateJsonBody, 
   validateMappingsRequest, 
   updateCalendarMappings
+);
+
+// Translation endpoints
+router.get('/events/:eventId/translations', getEventTranslations);
+router.get('/events/:eventId/translations/:language', getEventTranslation);
+router.post('/events/:eventId/translations', 
+  validateJsonBody, 
+  createEventTranslation
+);
+router.put('/events/:eventId/translations/:language', 
+  validateJsonBody, 
+  updateEventTranslation
+);
+router.delete('/events/:eventId/translations/:language', deleteEventTranslation);
+router.get('/events/:eventId/translations/:language/formatted', getFormattedTranslation);
+
+// Translation cache management endpoints (admin-only)
+router.get('/translations/cache/stats', 
+  authenticateToken, 
+  requireAdmin, 
+  getCacheStats
+);
+router.post('/translations/cache/clear', 
+  authenticateToken, 
+  requireAdmin, 
+  clearCache
 );
 
 export default router;
